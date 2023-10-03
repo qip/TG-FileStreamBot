@@ -1,6 +1,7 @@
 # Taken from megadlbot_oss <https://github.com/eyaadh/megadlbot_oss/blob/master/mega/webserver/routes.py>
 # Thanks to Eyaadh <https://github.com/eyaadh>
 
+import os
 import re
 import time
 import math
@@ -37,16 +38,18 @@ async def root_route_handler(_):
     )
 
 
-@routes.get(r"/{path:\S+}", allow_head=True)
+@routes.get(r"/{path:.+}", allow_head=True)
 async def stream_handler(request: web.Request):
     try:
         path = request.match_info["path"]
-        match = re.search(r"^([0-9a-f]{%s})(\d+)$" % (Var.HASH_LENGTH), path)
+        match = re.search(r"^([^.]+)\.(\d+)$", path)
         if match:
             secure_hash = match.group(1)
             message_id = int(match.group(2))
         else:
-            message_id = int(re.search(r"(\d+)(?:\/\S+)?", path).group(1))
+            match = re.search(r"(\d+)\/(.+)(?:\/\S+)?", path)
+            message_id = int(match.group(1))
+            #file_name = match.group(2)
             secure_hash = request.rel_url.query.get("hash")
         return await media_streamer(request, message_id, secure_hash)
     except InvalidHash as e:
@@ -106,17 +109,22 @@ async def media_streamer(request: web.Request, message_id: int, secure_hash: str
     chunk_size = 1024 * 1024
     until_bytes = min(until_bytes, file_size - 1)
 
-    offset = from_bytes - (from_bytes % chunk_size)
-    first_part_cut = from_bytes - offset
-    last_part_cut = until_bytes % chunk_size + 1
+    if row := utils.DB.query_by_column("downloaded", "file_unique_id", file_id.unique_id):
+        file_name = row['file_name']
+        body = tg_connect.yield_local_file(file_name, from_bytes, until_bytes + 1, chunk_size)
+    else:
+        file_name = utils.get_name(file_id)
+        offset = from_bytes - (from_bytes % chunk_size)
+        first_part_cut = from_bytes - offset
+        last_part_cut = until_bytes % chunk_size + 1
+
+        part_count = math.ceil(until_bytes / chunk_size) - math.floor(offset / chunk_size)
+        body = tg_connect.yield_file(
+            file_id, index, offset, first_part_cut, last_part_cut, part_count, chunk_size
+        )
 
     req_length = until_bytes - from_bytes + 1
-    part_count = math.ceil(until_bytes / chunk_size) - math.floor(offset / chunk_size)
-    body = tg_connect.yield_file(
-        file_id, index, offset, first_part_cut, last_part_cut, part_count, chunk_size
-    )
     mime_type = file_id.mime_type
-    file_name = utils.get_name(file_id)
     disposition = "attachment"
 
     if not mime_type:

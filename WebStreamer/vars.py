@@ -1,8 +1,10 @@
 # This file is a part of TG-FileStreamBot
 # Coding : Jyothis Jayanth [@EverythingSuckz]
 
+import os
 import sys
 from os import environ
+from collections import deque
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -34,3 +36,20 @@ class Var(object):
     DEBUG = str(environ.get("DEBUG", "0").lower()) in ("1", "true", "t", "yes", "y")
     USE_SESSION_FILE = str(environ.get("USE_SESSION_FILE", "0").lower()) in ("1", "true", "t", "yes", "y")
     ALLOWED_USERS = [x.strip("@ ") for x in str(environ.get("ALLOWED_USERS", "") or "").split(",") if x.strip("@ ")]
+    SAVE_TO = str(environ.get("SAVE_TO", "./downloads"))
+    os.makedirs(SAVE_TO, exist_ok=True)
+    subdirs = [
+        "audio",
+        "document",
+        "photo",
+        "sticker",
+        "animation",
+        "video",
+        "voice",
+        "video_note",
+    ]
+    for subdir in subdirs:
+        os.makedirs(os.path.join(SAVE_TO, subdir), exist_ok=True)
+    MAX_CONCURRENT_DOWNLOADS = int(environ.get("MAX_CONCURRENT_DOWNLOADS", "1"))
+    ARIA2_API = str(environ.get("ARIA2_API", "http://localhost"))
+    ARIA2_PORT = int(environ.get("ARIA2_PORT", "6800"))

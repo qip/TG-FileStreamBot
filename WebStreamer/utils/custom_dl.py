@@ -1,6 +1,8 @@
+import os
 import math
-import asyncio
 import logging
+import asyncio
+import aiofiles
 from WebStreamer import Var
 from typing import Dict, Union
 from WebStreamer.bot import work_loads
@@ -221,7 +223,18 @@ class ByteStreamer:
             logger.debug(f"Finished yielding file with {current_part} parts.")
             work_loads[index] -= 1
 
+    @staticmethod
+    async def yield_local_file(file_name: str, from_bytes: int, until_bytes: int, chunk_size: int):
     
+        async with aiofiles.open(os.path.join(Var.SAVE_TO, file_name), 'rb') as f:
+            await f.seek(from_bytes)
+            while from_bytes < until_bytes:
+                chunk = await f.read(min(chunk_size, until_bytes - from_bytes))
+                if not chunk:  # EOF reached or no more bytes to read
+                    break
+                from_bytes += len(chunk)
+                yield chunk
+
     async def clean_cache(self) -> None:
         """
         function to clean the cache to reduce memory usage

@@ -119,3 +119,6 @@ sessions/
 *.session-journal
 .env
 test.py
+
+*.db
+*.dat

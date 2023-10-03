@@ -1,4 +1,6 @@
 aiohttp<=3.8.1
+aiofiles
 pyrogram<=2.0.93 
 python-dotenv<=0.20.0
 TgCrypto<=1.2.5
+aria2p
